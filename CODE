@@ -1,0 +1,55 @@
+import os
+from io import BytesIO
+from PIL import Image
+import boto3
+
+def compress_image(input_path, output_path):
+    with Image.open(input_path) as img:
+        # Save the image to a BytesIO object
+        compressed_image = BytesIO()
+        img.save(compressed_image, format=img.format, optimize=True, quality=95)
+        
+        # Write the compressed image to the specified output path
+        with open(output_path, 'wb') as output_file:
+            output_file.write(compressed_image.getvalue())
+
+def upload_to_s3(file_path, bucket_name, s3_client):
+    with open(file_path, 'rb') as data:
+        s3_client.upload_fileobj(data, bucket_name, file_path)
+
+def compress_and_upload(directory, bucket_name, access_key, secret_key):
+    # Initialize AWS S3 client
+    s3_client = boto3.client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+
+    # Traverse through the specified directory
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            file_path = os.path.join(root, file)
+
+            # Check if the file is an image (JPEG or PNG)
+            if file.lower().endswith(('.jpg', '.jpeg', '.png')):
+                print(f'Processing: {file_path}')
+
+                # Create compressed image file path
+                compressed_path = file_path.replace(directory, f'{directory}_compressed')
+
+                # Create the necessary directory structure for compressed images
+                os.makedirs(os.path.dirname(compressed_path), exist_ok=True)
+
+                # Apply lossless compression and save the compressed image
+                compress_image(file_path, compressed_path)
+
+                # Upload the compressed image to S3, retaining the original file structure
+                s3_key = compressed_path.replace(directory + "_compressed", "").lstrip(os.path.sep)
+                upload_to_s3(compressed_path, bucket_name, s3_client)
+                print(f'Uploaded to S3: {s3_key}')
+
+if __name__ == "__main__":
+    # Input parameters
+    aws_access_key = "YOUR_AWS_ACCESS_KEY"
+    aws_secret_key = "YOUR_AWS_SECRET_KEY"
+    bucket_name = "YOUR_S3_BUCKET_NAME"
+    target_directory = "PATH_TO_YOUR_DIRECTORY"
+
+    # Call the compress_and_upload function
+    compress_and_upload(target_directory, bucket_name, aws_access_key, aws_secret_key)
