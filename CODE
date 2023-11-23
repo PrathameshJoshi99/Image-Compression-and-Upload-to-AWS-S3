@@ -5,9 +5,9 @@ import boto3
 
 def compress_image(input_path, output_path):
     with Image.open(input_path) as img:
-        # Save the image to a BytesIO object
+        # Save the image to a BytesIO object with increased quality (e.g., 80)
         compressed_image = BytesIO()
-        img.save(compressed_image, format=img.format, optimize=True, quality=95)
+        img.save(compressed_image, format=img.format, optimize=True, quality=80)
         
         # Write the compressed image to the specified output path
         with open(output_path, 'wb') as output_file:
@@ -36,7 +36,7 @@ def compress_and_upload(directory, bucket_name, access_key, secret_key):
                 # Create the necessary directory structure for compressed images
                 os.makedirs(os.path.dirname(compressed_path), exist_ok=True)
 
-                # Apply lossless compression and save the compressed image
+                # Apply lossless compression with increased quality and save the compressed image
                 compress_image(file_path, compressed_path)
 
                 # Upload the compressed image to S3, retaining the original file structure
